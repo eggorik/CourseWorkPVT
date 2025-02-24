@@ -6,10 +6,10 @@
 
 #define N 100  // Размер матрицы
 
-void print_matrix(double* matrix) {
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            printf("%8.3f ", matrix[i * N + j]);
+void print_matrix(double* matrix, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%8.3f ", matrix[i * cols + j]);
         }
         printf("\n");
     }
@@ -30,6 +30,9 @@ int main(int argc, char** argv) {
 
     start_time = MPI_Wtime();
 
+    int local_rows_count = N / size + (rank < N % size ? 1 : 0);
+    local_rows = (double*)malloc(local_rows_count * N * sizeof(double));
+
     if (rank == 0) {
         matrix = (double*)malloc(N * N * sizeof(double));
         srand(time(NULL));
@@ -38,49 +41,26 @@ int main(int argc, char** argv) {
                 matrix[i * N + j] = rand() % 10 + 1;
             }
         }
-        // printf("Initial matrix:\n");
-        // print_matrix(matrix);
     }
 
-    local_rows = (double*)malloc((N / size + (N % size > rank)) * N * sizeof(double));
-
-    int local_rows_count = 0;
-    for (int i = rank; i < N; i += size) {
-        MPI_Scatter(matrix + i * N, N, MPI_DOUBLE, local_rows + local_rows_count * N, N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-        local_rows_count++;
+    int* sendcounts = (int*)malloc(size * sizeof(int));
+    int* displs = (int*)malloc(size * sizeof(int));
+    for (int i = 0; i < size; i++) {
+        sendcounts[i] = (N / size + (i < N % size ? 1 : 0)) * N;
+        displs[i] = (i == 0) ? 0 : displs[i-1] + sendcounts[i-1];
     }
+
+    MPI_Scatterv(matrix, sendcounts, displs, MPI_DOUBLE, local_rows, local_rows_count * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     for (int i = 0; i < N; i++) {
         int root = i % size;
         int root_local_row = i / size;
-        double* root_row = NULL;
+        double* root_row = (double*)malloc(N * sizeof(double));
 
         if (rank == root) {
-            if (fabs(local_rows[root_local_row * N + i]) < 1e-10) {
-                int best_row = i;
-                double best_val = fabs(local_rows[root_local_row * N + i]);
-                for (int k = i + 1; k < N; k++) {
-                    double val = fabs(matrix[k * N + i]);
-                    if (val > best_val) {
-                        best_val = val;
-                        best_row = k;
-                    }
-                }
-                if (best_row != i) {
-                    for (int j = 0; j < N; j++) {
-                        double temp = matrix[i * N + j];
-                        matrix[i * N + j] = matrix[best_row * N + j];
-                        matrix[best_row * N + j] = temp;
-                    }
-                    swap_count++;
-                }
-            }
-            root_row = (double*)malloc(N * sizeof(double));
             for(int j = 0; j < N; j++){
                 root_row[j] = local_rows[root_local_row * N + j];
             }
-        } else {
-            root_row = (double*)malloc(N * sizeof(double));
         }
 
         MPI_Bcast(root_row, N, MPI_DOUBLE, root, MPI_COMM_WORLD);
@@ -109,9 +89,7 @@ int main(int argc, char** argv) {
         if (swap_count % 2 != 0) {
             determinant = -determinant;
         }
-        // printf("Determinant: %.3f\n", determinant);
-        // printf("\nResult matrix:\n");
-        // print_matrix(matrix);
+        printf("Determinant: %.3f\n", determinant);
     }
 
     end_time = MPI_Wtime();
@@ -123,6 +101,8 @@ int main(int argc, char** argv) {
     if(rank == 0){
         free(matrix);
     }
+    free(sendcounts);
+    free(displs);
 
     MPI_Finalize();
     return 0;
