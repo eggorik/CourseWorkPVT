@@ -1,0 +1,6 @@
+#!/bin/bash
+
+#SBATCH --nodes=2 --ntasks-per-node=8
+#SBATCH --partition=2288
+
+mpiexec ./mpi_app
