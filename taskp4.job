@@ -1,6 +1,5 @@
 #!/bin/sh
 #SBATCH --nodes=4 --ntasks-per-node=1
-#SBATCH --job-name=md8000p4
 
 cd $SLURM_SUBMIT_DIR
 

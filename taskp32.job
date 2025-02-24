@@ -1,0 +1,6 @@
+#!/bin/sh
+#SBATCH --nodes=4 --ntasks-per-node=8
+
+cd $SLURM_SUBMIT_DIR
+
+mpiexec ./mpi_app

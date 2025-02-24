@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
         if (swap_count % 2 != 0) {
             determinant = -determinant;
         }
-        printf("Determinant: %.3f\n", determinant);
+        // printf("Determinant: %.3f\n", determinant);
         // printf("\nResult matrix:\n");
         // print_matrix(matrix);
     }
