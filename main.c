@@ -4,7 +4,7 @@
 #include <math.h>
 #include <time.h>
 
-#define N 100  // Размер матрицы
+#define N 5000  // Размер матрицы
 
 void print_matrix(double* matrix, int rows, int cols) {
     for (int i = 0; i < rows; i++) {
@@ -21,7 +21,6 @@ int main(int argc, char** argv) {
     double* local_rows = NULL;
     double determinant = 1.0;
     double local_determinant = 1.0;
-    int swap_count = 0;
     double start_time, end_time;
 
     MPI_Init(&argc, &argv);
@@ -53,7 +52,7 @@ int main(int argc, char** argv) {
     MPI_Scatterv(matrix, sendcounts, displs, MPI_DOUBLE, local_rows, local_rows_count * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     for (int i = 0; i < N; i++) {
-        int root = i % size;
+        int root = i % size;    
         int root_local_row = i / size;
         double* root_row = (double*)malloc(N * sizeof(double));
 
@@ -86,9 +85,6 @@ int main(int argc, char** argv) {
     MPI_Reduce(&local_determinant, &determinant, 1, MPI_DOUBLE, MPI_PROD, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
-        if (swap_count % 2 != 0) {
-            determinant = -determinant;
-        }
         printf("Determinant: %.3f\n", determinant);
     }
 
